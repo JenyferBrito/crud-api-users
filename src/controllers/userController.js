@@ -1,54 +1,55 @@
-const userModel = require('../models/UserModel');
+// Mocka o userService para controlarmos o que ele retorna
+const userService = require('../services/userService');
+jest.mock('../services/userService');
 
-// Função para listar usuários
-const listUsers = async (req, res) => {
-    try {
-        const users = await userModel.getAllUsers();
-        res.status(200).json(users);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-};
+const userController = require('../controllers/userController');
 
-// Função para obter um usuário por ID
-const getUserById = async (req, res) => {
-    try {
-        const user = await userModel.getUserById(parseInt(req.params.id));
-        if (!user) return res.status(404).json({ error: 'Usuário não encontrado.' });
-        res.status(200).json(user);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-};
+describe('userController.getAll', () => {
+ 
+  let req;
+  let res;
 
-// Função para criar um usuário
-const createUser = async (req, res) => {
-    try {
-        const newUser = await userModel.createUser(req.body);
-        res.status(201).json(newUser);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-};
+  beforeEach(() => {
+  
+    res = {
+      status: jest.fn().mockReturnThis(), // Permite encadear .status().json()
+      json: jest.fn(),
+    };
+    req = {}; // A requisição (req) não precisa de nada para este teste
+    // Limpa os mocks antes de cada novo teste
+    jest.clearAllMocks(); 
+  });
 
-// Função para atualizar um usuário
-const updateUser = async (req, res) => {
-    try {
-        const updatedUser = await userModel.updateUser(parseInt(req.params.id), req.body);
-        res.status(200).json(updatedUser);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-};
+  // --- Teste 1: Caminho de Sucesso (Cobre as Linhas de Sucesso) ---
+  test('Deve retornar status 200 e a lista de usuários', async () => {
+    // Dados de usuários que o serviço SIMULADO vai retornar
+    const mockUsers = [{ id: 1, name: 'João' }];
+    
+    // Configura o mock do serviço para retornar o sucesso
+    userService.getAllUsers.mockResolvedValue(mockUsers);
+    
+    // Chama a função a ser testada
+    await userController.getAll(req, res);
 
-// Função para deletar um usuário
-const deleteUser = async (req, res) => {
-    try {
-        await userModel.deleteUser(parseInt(req.params.id));
-        res.status(204).send();
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-};
+    // Verifica se o status 200 foi chamado
+    expect(res.status).toHaveBeenCalledWith(200);
+    // Verifica se o corpo JSON correto foi retornado
+    expect(res.json).toHaveBeenCalledWith(mockUsers);
+  });
+  
+  
+  test('Deve retornar status 500 em caso de erro no serviço', async () => {
+    const error = new Error('Erro de conexão com o banco');
+    
+    // Configura o mock do serviço para REJEITAR (simular erro)
+    userService.getAllUsers.mockRejectedValue(error);
+    
+    // Chama a função a ser testada
+    await userController.getAll(req, res);
 
-module.exports = { listUsers, getUserById, createUser, updateUser, deleteUser };
+    // Verifica se o status 500 foi chamado
+    expect(res.status).toHaveBeenCalledWith(500);
+    // Verifica se a mensagem de erro foi retornada
+    expect(res.json).toHaveBeenCalledWith({ message: 'Erro ao buscar usuários.' });
+  });
+});
